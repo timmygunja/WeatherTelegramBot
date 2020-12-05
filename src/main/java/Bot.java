@@ -1,3 +1,4 @@
+import org.json.JSONObject;
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
@@ -28,45 +29,30 @@ public class Bot extends TelegramLongPollingBot {
 
     public synchronized void setButtons(SendMessage sendMessage) {
 
-// Создаем клавиуатуру
-
+        // Создаем клавиуатуру
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
         sendMessage.setReplyMarkup(replyKeyboardMarkup);
         replyKeyboardMarkup.setSelective(true);
         replyKeyboardMarkup.setResizeKeyboard(true);
         replyKeyboardMarkup.setOneTimeKeyboard(false);
 
-
-// Создаем список строк клавиатуры
-
+        // Создаем список строк клавиатуры
         List<KeyboardRow> keyboard = new ArrayList<>();
 
 
-// Первая строчка клавиатуры
-
+        // Добавляем строки клавиатуры
         KeyboardRow keyboardFirstRow = new KeyboardRow();
-
-// Добавляем кнопки в первую строчку клавиатуры
-
-        keyboardFirstRow.add(new KeyboardButton("Hello"));
-
-
-// Вторая строчка клавиатуры
-
         KeyboardRow keyboardSecondRow = new KeyboardRow();
 
-// Добавляем кнопки во вторую строчку клавиатуры
-
+        // Добавляем кнопки клавиатуры
+        keyboardFirstRow.add(new KeyboardButton("Узнать текущую погоду"));
         keyboardSecondRow.add(new KeyboardButton("Help"));
 
-
-// Добавляем все строчки клавиатуры в список
-
+        // Добавляем все строки клавиатуры в список
         keyboard.add(keyboardFirstRow);
         keyboard.add(keyboardSecondRow);
 
-// и устанваливаем этот список нашей клавиатуре
-
+        // и устанваливаем этот список нашей клавиатуре
         replyKeyboardMarkup.setKeyboard(keyboard);
     }
 
@@ -78,8 +64,23 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        String chadId = update.getMessage().getChatId().toString();
         String message = update.getMessage().getText();
-        sendMsg(update.getMessage().getChatId().toString(), message);
+
+//        sendMsg(chadId, message);
+        if (message.equals("Узнать текущую погоду"))
+            sendMsg(chadId, "Какой город вас интересует ?");
+        else {
+
+            try {
+                JSONObject data = Parser.getCurrentData(message);
+                String answer = Parser.retrieveCurrentData(data);
+                sendMsg(chadId, answer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 
 
@@ -91,9 +92,11 @@ public class Bot extends TelegramLongPollingBot {
 
     public synchronized void sendMsg(String chatId, String s) {
         SendMessage sendMessage = new SendMessage();
+        setButtons(sendMessage);
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(chatId);
         sendMessage.setText(s);
+//        sendMessage.setReplyMarkup();
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
