@@ -1,9 +1,9 @@
-import java.net.URLEncoder;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import java.time.LocalDate;
 
 
 public class Parser {
@@ -17,10 +17,8 @@ public class Parser {
 
 
         JSONObject data = getWeeklyData("Nalchik");
-//        String message = retrieveWeeklyData(data);
-
-        System.out.println(data.toString(4));
-//        System.out.println(message);
+        retrieveWeeklyData(data);
+//        System.out.println(data.toString(4));
     }
 
 
@@ -55,9 +53,10 @@ public class Parser {
 
 
     public static JSONObject getWeeklyData(String city) throws Exception{
-        HttpResponse<JsonNode> response = Unirest.get("https://weatherapi-com.p.rapidapi.com/forecast.json?q=" + city +"&lang=ru&days=7")
+        HttpResponse<JsonNode> response = Unirest.get("https://community-open-weather-map.p.rapidapi.com/forecast?" +
+                "q=" + city + "%2Cru&units=metric&lang=ru")
                 .header("x-rapidapi-key", "af19471729msh67370b1f5c7efdfp1f26f0jsnf82d973c1c62")
-                .header("x-rapidapi-host", "weatherapi-com.p.rapidapi.com")
+                .header("x-rapidapi-host", "community-open-weather-map.p.rapidapi.com")
                 .asJson();
 
         return response.getBody().getObject();
@@ -65,13 +64,25 @@ public class Parser {
 
 
     public static String retrieveWeeklyData(JSONObject data) throws Exception{
-        int answerCode = data.getJSONObject("current").getJSONObject("condition").getInt("code");
-        System.out.println(answerCode);
+        int answerCode = data.getInt("cod");
         String answer;
 
-        if (answerCode == 1147) {
-            String city_name = data.getJSONObject("location").getString("name");
+        if (answerCode == 200) {
+            String city_name = data.getJSONObject("city").getString("name");
+            JSONArray forecast = data.getJSONArray("list");
+            int curDay = LocalDate.now().getDayOfMonth();
+            int curMonth = LocalDate.now().getMonthValue();
+            int curYear = LocalDate.now().getYear();
 
+            for (int day = 0; day < 40; day++){
+                int fcDateDay = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(8, 10));
+                int fcDateMonth = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(5, 7));
+                int fcDateYear = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(0, 4));
+
+                if (fcDateDay > curDay || fcDateMonth > curMonth || fcDateYear > curYear) {
+                    System.out.println("True");
+                } else System.out.println("False");
+            }
 
             answer = city_name + "\n" +
                         " ";
