@@ -4,6 +4,8 @@ import com.mashape.unirest.http.Unirest;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 
 public class Parser {
@@ -16,9 +18,9 @@ public class Parser {
 //        System.out.println(data.toString());
 
 
-        JSONObject data = getWeeklyData("Nalchik");
-        retrieveWeeklyData(data);
-//        System.out.println(data.toString(4));
+        JSONObject data = getTodayData("Moscow");
+        retrieveTodayData(data);
+        System.out.println(data.toString(4));
     }
 
 
@@ -38,21 +40,22 @@ public class Parser {
         String answer;
 
         if (answerCode == 200) {
-            String city_name = data.getString("name");
-            double temperature = data.getJSONObject("main").getDouble("temp");
-            String description = data.getJSONArray("weather").getJSONObject(0).getString("description");
+            String city = data.getString("name");
+            String temp = String.valueOf(Math.round(data.getJSONObject("main").getDouble("temp"))) + " C°";
+            String desc = data.getJSONArray("weather").getJSONObject(0).getString("description");
+            desc = beautify(desc);
 
-            answer = city_name + "\n" +
-                     temperature + " C^\n" +
-                     description + "\n";
+            answer = city + "\n" +
+                    temp + "\n" +
+                    desc + "\n";
 
-        } else answer = "Город не найден";
+        } else answer = "Город не найден, укажите его заново";
 
         return answer;
     }
 
 
-    public static JSONObject getWeeklyData(String city) throws Exception{
+    public static JSONObject getTodayData(String city) throws Exception{
         HttpResponse<JsonNode> response = Unirest.get("https://community-open-weather-map.p.rapidapi.com/forecast?" +
                 "q=" + city + "%2Cru&units=metric&lang=ru")
                 .header("x-rapidapi-key", "af19471729msh67370b1f5c7efdfp1f26f0jsnf82d973c1c62")
@@ -63,34 +66,59 @@ public class Parser {
     }
 
 
-    public static String retrieveWeeklyData(JSONObject data) throws Exception{
+    public static String retrieveTodayData(JSONObject data) throws Exception{
         int answerCode = data.getInt("cod");
         String answer;
 
         if (answerCode == 200) {
             String city_name = data.getJSONObject("city").getString("name");
-            JSONArray forecast = data.getJSONArray("list");
-            int curDay = LocalDate.now().getDayOfMonth();
-            int curMonth = LocalDate.now().getMonthValue();
-            int curYear = LocalDate.now().getYear();
-
-            for (int day = 0; day < 40; day++){
-                int fcDateDay = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(8, 10));
-                int fcDateMonth = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(5, 7));
-                int fcDateYear = Integer.parseInt(forecast.getJSONObject(day).getString("dt_txt").substring(0, 4));
-
-                if (fcDateDay > curDay || fcDateMonth > curMonth || fcDateYear > curYear) {
-                    System.out.println("True");
-                } else System.out.println("False");
-            }
+            int currentHour = LocalTime.now().getHour();
+            int tics = ((24 - currentHour) / 3) + 1;
+            String currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " - "
+                    + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
 
             answer = city_name + "\n" +
-                        " ";
+                    currentDate + "\n" +
+                    "\n";
 
-        } else answer = "Город не найден";
+            for (int day = 0; day < tics; day++){
+                JSONObject forecast = data.getJSONArray("list").getJSONObject(day);
+                String time = forecast.getString("dt_txt").substring(11, 16);
+                String temp = String.valueOf(Math.round(forecast.getJSONObject("main").getDouble("temp"))) + " C°";
+                String desc = forecast.getJSONArray("weather").getJSONObject(0).getString("description");
+                desc = beautify(desc);
+
+                answer += time + " -> " + temp + "\n" +
+                        desc + "\n\n";
+            }
+
+
+        } else answer = "Город не найден, укажите его заново";
 
         return answer;
     }
 
+    public static String beautify(String string){
+        string = string.toLowerCase();
+//        "⚡☀🌤🌥⛅☁🌦🌧⛈🌩🌨❄🌫🌙"
+        if (string.contains("небольшая облачность"))
+            string += " \uD83C\uDF24";
+        else if (string.contains("облачно"))
+            string += " ⛅";
+        else if (string.contains("ясно"))
+            string += " \uD83C\uDF15 \uD83C\uDF19";
+        else if (string.contains("небольшой дождь"))
+            string += " \uD83C\uDF26";
+        else if (string.contains("гроз") || string.contains("молн"))
+            string += " ⛈";
+        else if (string.contains("пасмурно"))
+            string += " ☁";
+        else if (string.contains("снег"))
+            string += " \uD83C\uDF28";
+        else if (string.contains("туман"))
+            string += " \uD83C\uDF2B";
+
+        return string;
+    }
 
 }

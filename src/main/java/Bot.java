@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 public class Bot extends TelegramLongPollingBot {
+    String city = "Лондон";
 
     public static void main(String[] args) {
         ApiContextInitializer.init();
@@ -45,7 +46,10 @@ public class Bot extends TelegramLongPollingBot {
         KeyboardRow keyboardSecondRow = new KeyboardRow();
 
         // Добавляем кнопки клавиатуры
-        keyboardFirstRow.add(new KeyboardButton("Узнать текущую погоду"));
+        keyboardFirstRow.add(new KeyboardButton("Указать город"));
+        keyboardFirstRow.add(new KeyboardButton("Погода сейчас"));
+        keyboardSecondRow.add(new KeyboardButton("Прогноз сегодня"));
+        keyboardSecondRow.add(new KeyboardButton("Прогноз на завтра"));
         keyboardSecondRow.add(new KeyboardButton("Help"));
 
         // Добавляем все строки клавиатуры в список
@@ -66,23 +70,33 @@ public class Bot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         String chadId = update.getMessage().getChatId().toString();
         String message = update.getMessage().getText();
-
 //        sendMsg(chadId, message);
-        if (message.equals("Узнать текущую погоду"))
-            sendMsg(chadId, "Какой город вас интересует ?");
-        else {
-
-            try {
-                JSONObject data = Parser.getCurrentData(message);
-                String answer = Parser.retrieveCurrentData(data);
-                sendMsg(chadId, answer);
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            switch (message) {
+                case "Указать город":
+                    sendMsg(chadId, "Отправьте имя города и затем выберите опцию прогноза");
+                    break;
+                case "Погода сейчас": {
+                    JSONObject data = Parser.getCurrentData(city);
+                    String answer = Parser.retrieveCurrentData(data);
+                    sendMsg(chadId, answer);
+                    break;
+                }
+                case "Прогноз сегодня": {
+                    JSONObject data = Parser.getTodayData(city);
+                    String answer = Parser.retrieveTodayData(data);
+                    sendMsg(chadId, answer);
+                    break;
+                }
+                default:
+                    city = message;
+                    sendMsg(chadId, "Записан город " + city);
+                    break;
             }
-
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
-
 
     /**
      * Метод для настройки сообщения и его отправки.
