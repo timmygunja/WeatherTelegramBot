@@ -10,12 +10,13 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
 public class Bot extends TelegramLongPollingBot {
-    String city = "Лондон";
+    String city = "Москва";
 
     public static void main(String[] args) {
         ApiContextInitializer.init();
@@ -25,10 +26,13 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiRequestException e) {
             e.printStackTrace();
         }
+
+        Thread subscriptionThread = new subscriptionThread();
+        subscriptionThread.start();
     }
 
 
-    public synchronized void setButtons(SendMessage sendMessage) {
+    public static synchronized void setButtons(SendMessage sendMessage) {
 
         // Создаем клавиуатуру
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
@@ -50,7 +54,7 @@ public class Bot extends TelegramLongPollingBot {
         keyboardFirstRow.add(new KeyboardButton("Погода сейчас"));
         keyboardSecondRow.add(new KeyboardButton("Прогноз сегодня"));
         keyboardSecondRow.add(new KeyboardButton("Прогноз на завтра"));
-        keyboardSecondRow.add(new KeyboardButton("Help"));
+//        keyboardSecondRow.add(new KeyboardButton("Помощь"));
 
         // Добавляем все строки клавиатуры в список
         keyboard.add(keyboardFirstRow);
@@ -70,9 +74,12 @@ public class Bot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         String chadId = update.getMessage().getChatId().toString();
         String message = update.getMessage().getText();
-//        sendMsg(chadId, message);
+
         try {
             switch (message) {
+                case "/start":
+                    sendMsg(chadId, "Добро пожаловать!\nПолучите прогноз, отправив название города и выбрав опцию кнопкой.");
+                    break;
                 case "Указать город":
                     sendMsg(chadId, "Отправьте имя города и затем выберите опцию прогноза");
                     break;
@@ -86,6 +93,16 @@ public class Bot extends TelegramLongPollingBot {
                     JSONObject data = Parser.getTodayData(city);
                     String answer = Parser.retrieveTodayData(data);
                     sendMsg(chadId, answer);
+                    break;
+                }
+                case "Прогноз на завтра": {
+                    JSONObject data = Parser.getTomorrowData(city);
+                    String answer = Parser.retrieveTomorrowData(data);
+                    sendMsg(chadId, answer);
+                    break;
+                }
+                case "/subscribe": {
+                    sendMsg(chadId, chadId.toString());
                     break;
                 }
                 default:
@@ -139,5 +156,26 @@ public class Bot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return "1425042061:AAGaKa5JvK3pHhh3x4PTtlpiAPyIe0kUSf8";
+    }
+
+
+}
+
+
+class subscriptionThread extends Thread {
+    public void run() {
+        Bot bot = new Bot();
+
+        while (true) {
+            try {
+                if (LocalTime.now().getHour() == 0) {
+                    bot.sendMsg("912191596", "True");
+                    sleep(60_000 * 60);  // sleep for hour
+                }
+                else sleep(60_000 * 5);  // sleep for 5 minutes
+            } catch (Exception e) {
+                System.out.println("Exception: " + e.toString());
+            }
+        }
     }
 }

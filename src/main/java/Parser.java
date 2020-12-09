@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 
 public class Parser {
@@ -18,9 +19,9 @@ public class Parser {
 //        System.out.println(data.toString());
 
 
-        JSONObject data = getTodayData("Moscow");
-        retrieveTodayData(data);
-        System.out.println(data.toString(4));
+//        JSONObject data = getTodayData("Moscow");
+//        retrieveTodayData(data);
+//        System.out.println(data.toString(4));
     }
 
 
@@ -97,6 +98,49 @@ public class Parser {
 
         return answer;
     }
+
+    public static JSONObject getTomorrowData(String city) throws Exception{
+        HttpResponse<JsonNode> response = Unirest.get("https://community-open-weather-map.p.rapidapi.com/forecast?" +
+                "q=" + city + "%2Cru&units=metric&lang=ru")
+                .header("x-rapidapi-key", "af19471729msh67370b1f5c7efdfp1f26f0jsnf82d973c1c62")
+                .header("x-rapidapi-host", "community-open-weather-map.p.rapidapi.com")
+                .asJson();
+
+        return response.getBody().getObject();
+    }
+
+
+    public static String retrieveTomorrowData(JSONObject data) throws Exception{
+        int answerCode = data.getInt("cod");
+        String answer;
+
+        if (answerCode == 200) {
+            String city_name = data.getJSONObject("city").getString("name");
+            int currentHour = LocalTime.now().getHour();
+            int tics = ((24 - currentHour) / 3) + 1;
+            String tomorrowDate = LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString();
+
+            answer = city_name + "\n" +
+                    tomorrowDate + "\n" +
+                    "\n";
+
+            for (int day = tics; day < tics + 8; day++){
+                JSONObject forecast = data.getJSONArray("list").getJSONObject(day);
+                String time = forecast.getString("dt_txt").substring(11, 16);
+                String temp = String.valueOf(Math.round(forecast.getJSONObject("main").getDouble("temp"))) + " C°";
+                String desc = forecast.getJSONArray("weather").getJSONObject(0).getString("description");
+                desc = beautify(desc);
+
+                answer += time + " -> " + temp + "\n" +
+                        desc + "\n\n";
+            }
+
+
+        } else answer = "Город не найден, укажите его заново";
+
+        return answer;
+    }
+
 
     public static String beautify(String string){
         string = string.toLowerCase();
