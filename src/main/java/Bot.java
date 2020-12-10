@@ -10,13 +10,16 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
 
+import java.io.*;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
+import java.util.*;
 
 public class Bot extends TelegramLongPollingBot {
+    String dir = System.getProperty("user.dir");
+    String fileName = "subInfo.txt";
+    String path = dir + File.separator + fileName;
     String city = "Москва";
+    Map<String, String> subInfo;
 
     public static void main(String[] args) {
         ApiContextInitializer.init();
@@ -65,11 +68,6 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-    /**
-     * Метод для приема сообщений.
-     * @param update Содержит сообщение от пользователя.
-     */
-
     @Override
     public void onUpdateReceived(Update update) {
         String chadId = update.getMessage().getChatId().toString();
@@ -102,11 +100,28 @@ public class Bot extends TelegramLongPollingBot {
                     break;
                 }
                 case "/subscribe": {
-                    sendMsg(chadId, chadId.toString());
+                    try {
+                        write(chadId, city);
+                        sendMsg(chadId, "Вы успешно подписались на рассылку по городу " + city +
+                                "\nПрогноз на сутки будет приходить вам в 8:00 по московскому времени");
+                    }
+                    catch (Exception e) {
+                        System.out.println("Exception: " + e.toString());
+                    }
+                    break;
+                }
+                case "/unsubscribe": {
+                    try {
+                        remove(chadId);
+                        sendMsg(chadId, "Подписка прекращена, уведомления приходить не будут.");
+                    }
+                    catch (Exception e) {
+                        System.out.println("Exception: " + e.toString());
+                    }
                     break;
                 }
                 default:
-                    city = message;
+                    this.city = message;
                     sendMsg(chadId, "Записан город " + city);
                     break;
             }
@@ -127,7 +142,6 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(chatId);
         sendMessage.setText(s);
-//        sendMessage.setReplyMarkup();
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
@@ -137,27 +151,54 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-    /**
-     * Метод возвращает имя бота, указанное при регистрации.
-     * @return имя бота
-     */
-
     @Override
     public String getBotUsername() {
         return "WeatherTelegramFinBot";
     }
 
 
-    /**
-     * Метод возвращает token бота для связи с сервером Telegram
-     * @return token для бота
-     */
-
     @Override
     public String getBotToken() {
         return "1425042061:AAGaKa5JvK3pHhh3x4PTtlpiAPyIe0kUSf8";
     }
 
+    public void write(String chatId, String city) throws IOException {
+        FileWriter fw = new FileWriter(path, true);
+        String content = chatId + " " + city + "\n";
+        fw.write(content);
+        fw.close();
+    }
+
+
+    public Map<String, String> read() throws IOException {
+        Map<String, String> subInfo = new HashMap<>();
+        FileReader fr = new FileReader(path);
+        BufferedReader reader = new BufferedReader(fr);
+        String line = reader.readLine();
+        while (line != null) {
+            String key = line.split(" ")[0];
+            String value = line.split(" ")[1];
+            subInfo.put(key, value);
+            line = reader.readLine();
+        }
+        fr.close();
+        return subInfo;
+    }
+
+
+    public void remove(String chatId) throws IOException {
+        Map<String, String> subInfo = read();
+        subInfo.remove(chatId);
+        FileWriter fileWriter = new FileWriter(path);
+        fileWriter.write("");
+        fileWriter.close();
+        FileWriter fw = new FileWriter(path, true);
+        for (Map.Entry<String, String> user : subInfo.entrySet()) {
+            String content = user.getKey() + " " + user.getValue() + "\n";
+            fw.append(content);
+        }
+        fw.close();
+    }
 
 }
 
@@ -166,16 +207,27 @@ class subscriptionThread extends Thread {
     public void run() {
         Bot bot = new Bot();
 
-        while (true) {
-            try {
-                if (LocalTime.now().getHour() == 0) {
-                    bot.sendMsg("912191596", "True");
-                    sleep(60_000 * 60);  // sleep for hour
+        try {
+            while (true)
+            {
+                if (LocalTime.now().getHour() > 5 && LocalTime.now().getHour() < 9) {
+                    if (LocalTime.now().getHour() == 8) {
+                        Map<String, String> subInfo = bot.read();
+
+                        for (Map.Entry<String, String> user : subInfo.entrySet()) {
+                            JSONObject data = Parser.getTodayData(user.getValue());
+                            String answer = Parser.retrieveTodayData(data);
+                            bot.sendMsg(user.getKey(), answer);
+                        }
+                        sleep(60_000 * 60);  // sleep for hour
+
+                    } else sleep(15_000);
                 }
-                else sleep(60_000 * 5);  // sleep for 5 minutes
-            } catch (Exception e) {
-                System.out.println("Exception: " + e.toString());
+                else sleep(60_000 * 60 * 3);
             }
         }
+        catch (Exception e) {
+                System.out.println("Exception: " + e.toString());
+            }
     }
 }
