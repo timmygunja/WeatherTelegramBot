@@ -13,9 +13,9 @@ public class Parser {
 
     public static void main(String[] args) throws Exception
     {
-       JSONObject data = getCurrentData("Moscow");
+    //    JSONObject data = getCurrentData("Moscow");
 
-       System.out.println(data.toString());
+    //    System.out.println(data.toString());
 
     //    String message = retrieveCurrentData(data);
     //    System.out.println(message.toString());
