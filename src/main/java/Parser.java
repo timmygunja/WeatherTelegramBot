@@ -13,22 +13,26 @@ public class Parser {
 
     public static void main(String[] args) throws Exception
     {
-//        JSONObject data = getCurrentData();
-//        String message = retrieveCurrentData(data);
-//
-//        System.out.println(data.toString());
+       JSONObject data = getCurrentData("Moscow");
+
+       System.out.println(data.toString());
+
+    //    String message = retrieveCurrentData(data);
+    //    System.out.println(message.toString());
+    //    System.out.println(message);
 
 
-//        JSONObject data = getTodayData("Moscow");
-//        retrieveTodayData(data);
-//        System.out.println(data.toString(4));
+    //    JSONObject data = getTodayData("Moscow");
+    //    retrieveTodayData(data);
+    //    System.out.println(data.toString(4));
     }
 
 
     public static JSONObject getCurrentData(String city) throws Exception{
         HttpResponse<JsonNode> response = Unirest.get("https://community-open-weather-map.p.rapidapi.com/weather?" +
                 "q=" + city + "%2Cru&lat=0&lon=0&lang=ru&units=metric&mode=xml%2C%20html")
-                .header("x-rapidapi-key", "af19471729msh67370b1f5c7efdfp1f26f0jsnf82d973c1c62")
+                // .header("x-rapidapi-key", "27dd8f83f622cbdab5d947ec528fcc25")
+                .header("x-rapidapi-key", "f9ec3da22f3997c8018981ab4fbea7d8")
                 .header("x-rapidapi-host", "community-open-weather-map.p.rapidapi.com")
                 .asJson();
 
